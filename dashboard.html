@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard | University Smart System</title>
+
+<style>
+body {
+    background:linear-gradient(135deg,#020617,#020c2d);
+    font-family:Poppins,sans-serif;
+    color:#fff;
+    padding:40px;
+}
+.dashboard {
+    max-width:1000px;
+    margin:auto;
+    background:rgba(255,255,255,0.05);
+    backdrop-filter:blur(20px);
+    padding:30px;
+    border-radius:20px;
+    box-shadow:0 20px 50px rgba(0,0,0,0.6);
+}
+h1 {text-align:center;margin-bottom:30px;}
+
+table {
+    width:100%;
+    border-collapse:collapse;
+    margin-top:20px;
+}
+th,td {
+    padding:12px;
+    border-bottom:1px solid rgba(255,255,255,0.1);
+    text-align:left;
+    color:#cbd5f5;
+}
+th {
+    color:#fff;
+    font-weight:600;
+    background:rgba(255,255,255,0.08);
+}
+.section {
+    margin-top:30px;
+    background:rgba(255,255,255,0.06);
+    padding:20px;
+    border-radius:15px;
+}
+button {
+    padding:12px 20px;
+    border:none;
+    border-radius:10px;
+    background:linear-gradient(135deg,#2563eb,#1e40af);
+    color:#fff;
+    font-weight:600;
+    cursor:pointer;
+}
+input,textarea {
+    width:100%;
+    padding:12px;
+    margin-top:10px;
+    border-radius:10px;
+    border:1px solid rgba(255,255,255,0.2);
+    background:rgba(255,255,255,0.05);
+    color:#fff;
+}
+.logout {
+    display:block;
+    margin:30px auto 0;
+    width:200px;
+    padding:12px;
+    text-align:center;
+    border-radius:10px;
+    background:linear-gradient(135deg,#2563eb,#1e40af);
+    color:#fff;
+    font-weight:600;
+    text-decoration:none;
+}
+</style>
+</head>
+
+<body>
+<div class="dashboard">
+
+<h1>Welcome Student {{ username }}</h1>
+
+<table>
+<thead>
+<tr>
+{% for key in student.keys() %}
+<th>{{ key }}</th>
+{% endfor %}
+</tr>
+</thead>
+<tbody>
+<tr>
+{% for value in student.values() %}
+<td>{{ value }}</td>
+{% endfor %}
+</tr>
+</tbody>
+</table>
+
+<div class="section">
+<h2>🤖 AI Recommendation</h2>
+<p>{{ recommendation }}</p>
+</div>
+
+<div class="section">
+<h2>📤 Submit Task</h2>
+<form method="POST" action="/submit-task">
+    <input type="text" name="task" placeholder="Task name or link" required>
+    <button style="margin-top:15px;">Submit</button>
+</form>
+</div>
+
+<a href="/" class="logout">Logout</a>
+
+</div>
+</body>
+</html>

@@ -1,76 +1,142 @@
-from flask import Flask, jsonify, request
+from flask import Flask, render_template, request, redirect, url_for
 import pandas as pd
-import joblib
+import os
 
-# ---------- Flask App ----------
 app = Flask(__name__)
 
-# ---------- Load Dataset ----------
-df = pd.read_excel("student_performance_dataset.xlsx")  # غيري الاسم لو الملف مختلف
+# ---------------- Excel ----------------
+EXCEL_PATH = os.path.join(os.path.dirname(__file__), "students.xlsx")
 
-# ---------- Load ML Model ----------
-MODEL_PATH = "student_risk_model.pkl"
-model = joblib.load(MODEL_PATH)
-FEATURES = getattr(model, "feature_names_in_", None)
-if FEATURES is None:
-    raise RuntimeError("Model has no feature_names_in_. Re-train using DataFrame")
-LABEL_MAP = {0: "High", 1: "Medium", 2: "Low"}
-
-def predict_student(student_dict: dict):
-    X = pd.DataFrame([[student_dict.get(f, 0) for f in FEATURES]], columns=FEATURES)
-    pred = model.predict(X)[0]
-    risk = LABEL_MAP.get(int(pred), int(pred))
-    result = {"pred_code": int(pred), "risk_level": risk}
-    if hasattr(model, "predict_proba"):
-        proba = model.predict_proba(X)[0].tolist()
-        result["probabilities"] = proba
-    return result
-
-# ---------- Basic Routes ----------
-@app.route("/")
-def home():
-    return "Backend is working! 🎉"
-
-@app.route("/students", methods=["GET"])
-def get_students():
-    return jsonify(df.to_dict(orient="records"))
-
-@app.route("/health", methods=["GET"])
-def health():
-    return jsonify({"status": "running", "students_count": len(df)})
-
-# ---------- Prediction Route ----------
-@app.route("/predict", methods=["POST"])
-def predict():
-    data = request.json
-
-    # طالب واحد
-    if isinstance(data, dict):
-        return jsonify(predict_student(data))
-
-    # أكتر من طالب
-    elif isinstance(data, list):
-        results = [predict_student(student) for student in data]
-        return jsonify(results)
-
+def read_students():
+    if os.path.exists(EXCEL_PATH):
+        df = pd.read_excel(EXCEL_PATH)
     else:
-        return jsonify({"error": "Invalid input format"}), 400
+        columns = ['StudentID','name','email','department','level','College_of',
+                   'attendance','assignment_avg','midterm','practical','project',
+                   'final','quiz_avg','oral_avg','GPA','risk_level',
+                   'fail_probability','participation','study_hours','mood',
+                   'Previous GPA','Class Interaction']
+        df = pd.DataFrame(columns=columns)
+        df.to_excel(EXCEL_PATH, index=False)
+    df["StudentID"] = df["StudentID"].astype(str).str.strip().str.lower()
+    df["email"] = df["email"].astype(str).str.strip().str.lower()
+    return df
 
-# ---------- Upload New Dataset ----------
-@app.route("/upload", methods=["POST"])
-def upload_file():
-    if "file" not in request.files:
-        return {"error": "No file part"}, 400
-    file = request.files["file"]
-    if file.filename == "":
-        return {"error": "No selected file"}, 400
-    try:
-        global df
-        df = pd.read_excel(file)
-        return {"status": "uploaded", "rows": len(df)}, 200
-    except Exception as e:
-        return {"error": str(e)}, 500
+def save_students(df):
+    df.to_excel(EXCEL_PATH, index=False)
 
-# ---------- Run Server ----------
+# ---------------- AI Recommendation ----------------
+def generate_recommendation(student):
+    rec = []
+    if student['attendance'] < 75:
+        rec.append("Improve attendance to boost performance.")
+    if student['GPA'] < 2.5:
+        rec.append("Focus on key subjects to increase GPA.")
+    if student['study_hours'] < 10:
+        rec.append("Increase study hours for better results.")
+    if not rec:
+        rec.append("Keep up the good work! Your performance is stable.")
+    return " ".join(rec)
+
+# ---------------- Welcome ----------------
+@app.route("/")
+def welcome():
+    return render_template("welcome.html")
+
+# ---------------- Login ----------------
+@app.route("/login", methods=["GET", "POST"])
+def login_page():
+    error = None
+    if request.method == "POST":
+        username = request.form.get("username", "").strip().lower()
+        email = request.form.get("email", "").strip().lower()
+
+        if username == "admin" and email == "admin@uni.com":
+            return redirect(url_for("doctor_dashboard"))
+
+        df = read_students()
+        student = df[(df["StudentID"] == username) & (df["email"] == email)]
+
+        if student.empty:
+            error = "Student not found"
+            return render_template("index.html", error=error)
+
+        return redirect(url_for("student_dashboard", student_id=username))
+
+    return render_template("index.html", error=error)
+
+# ---------------- Signup ----------------
+@app.route("/signup", methods=["GET", "POST"])
+def signup_page():
+    if request.method == "POST":
+        role = request.form.get("role")
+        if role == "doctor":
+            return redirect(url_for("login_page"))
+
+        df = read_students()
+        new_student = {
+            "StudentID": request.form.get("student_id").strip().lower(),
+            "name": request.form.get("name"),
+            "email": request.form.get("email").strip().lower(),
+            "department": "Unknown",
+            "level": 1,
+            "College_of": "Unknown",
+            "attendance": 0,
+            "assignment_avg": 0,
+            "midterm": 0,
+            "practical": 0,
+            "project": 0,
+            "final": 0,
+            "quiz_avg": 0,
+            "oral_avg": 0,
+            "GPA": 0,
+            "risk_level": "Unknown",
+            "fail_probability": 0,
+            "participation": 0,
+            "study_hours": 0,
+            "mood": "Unknown",
+            "Previous GPA": 0,
+            "Class Interaction": 0
+        }
+        df = pd.concat([df, pd.DataFrame([new_student])], ignore_index=True)
+        save_students(df)
+        return redirect(url_for("login_page"))
+
+    return render_template("signup.html")
+
+# ---------------- Student Dashboard ----------------
+@app.route("/dashboard/student/<student_id>")
+def student_dashboard(student_id):
+    df = read_students()
+    student = df[df["StudentID"] == student_id.strip().lower()]
+    if student.empty:
+        return "Student not found", 404
+    student_data = student.iloc[0].to_dict()
+    recommendation = generate_recommendation(student_data)
+    return render_template(
+        "dashboard.html",
+        role="student",
+        username=student_data["name"],
+        student=student_data,
+        recommendation=recommendation
+    )
+
+# ---------------- Doctor Dashboard ----------------
+@app.route("/dashboard/doctor")
+def doctor_dashboard():
+    df = read_students()
+    if df.empty:
+        return "No students found", 404
+    student_data = df.iloc[0].to_dict()
+    recommendation = generate_recommendation(student_data)
+    return render_template(
+        "dashboard.html",
+        role="doctor",
+        username="Admin",
+        student=student_data,
+        recommendation=recommendation
+    )
+
+# ---------------- Run App ----------------
 if __name__ == "__main__":
     app.run(debug=True)

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sign Up | University Smart System</title>
+<style>
+body {background:linear-gradient(135deg,#020617,#020c2d);font-family:Poppins,sans-serif;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;}
+.signup-card {background:rgba(255,255,255,0.05);backdrop-filter:blur(20px);padding:40px;border-radius:20px;box-shadow:0 20px 50px rgba(0,0,0,0.6);width:400px;}
+h2 {text-align:center;margin-bottom:20px;}
+input,select {width:100%;padding:12px;margin-bottom:15px;border-radius:10px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.05);color:#fff;outline:none;}
+button {width:100%;padding:14px;border-radius:12px;border:none;background:linear-gradient(135deg,#2563eb,#1e40af);color:#fff;font-size:16px;font-weight:600;cursor:pointer;}
+</style>
+</head>
+<body>
+<div class="signup-card">
+<h2>Create Account</h2>
+<form method="POST" action="/signup">
+<input type="text" name="student_id" placeholder="Student ID" required>
+<input type="text" name="name" placeholder="Full Name" required>
+<input type="email" name="email" placeholder="Email" required>
+<select name="role" required>
+    <option
